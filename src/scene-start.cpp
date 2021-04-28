@@ -39,6 +39,8 @@ static float camRotUpAndOverDeg = 20; // rotates the camera up and over the cent
 mat4 projection; // Projection matrix - set in the reshape function
 mat4 view; // View matrix - set in the display function.
 
+vec4 eye = vec4(0, 0, viewDist, 1);   //Used for the LookAt() function
+
 // These are used to set the window title
 char lab[] = "Project1";
 char *programName = NULL; // Set in main 
@@ -167,7 +169,7 @@ void loadMeshIfNotAlreadyLoaded(int meshNumber) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferId[0]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * mesh->mNumFaces * 3, elements.data(), GL_STATIC_DRAW);
 
-    // vPosition it actually 4D - the conversion sets the fourth dimension (i.e. w) to 1.0                 
+    // vPosition is actually 4D - the conversion sets the fourth dimension (i.e. w) to 1.0                 
     glVertexAttribPointer(vPosition, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vPosition);
 
@@ -182,6 +184,12 @@ void loadMeshIfNotAlreadyLoaded(int meshNumber) {
 }
 
 //----------------------------------------------------------------------------
+
+void adjustViewDistance() {
+    float currentDist = sqrt(pow(eye[0], 2) + pow(eye[1], 2) + pow(eye[2], 2));
+    float scale = viewDist / currentDist;
+    eye = vec4(eye[0] * scale, eye[1] * scale, eye[2] * scale, 1);
+}
 
 void zoomIn() {
     viewDist = (viewDist < 0.0 ? viewDist : viewDist * 0.8) - 0.05;
@@ -222,14 +230,21 @@ mat2 camRotZ() {
 //------callback functions for doRotate below and later-----------------------
 
 static void adjustCamrotsideViewdist(vec2 cv) {
-    cout << cv << endl;
     camRotSidewaysDeg += cv[0];
     viewDist += cv[1];
+
+    // Rotates the camera about the origin.
+    eye = RotateY(cv[0]) * eye;
 }
 
 static void adjustcamSideUp(vec2 su) {
     camRotSidewaysDeg += su[0];
     camRotUpAndOverDeg += su[1];
+
+    // Rotates the camera about the origin.
+    eye = RotateY(su[0]) * eye;
+    // Translates the camera vertically to change the elevation angle.
+    eye = Translate(0, su[1] * viewDist * 0.05, 0) * eye;
 }
 
 static void adjustLocXZ(vec2 xz) {
@@ -404,7 +419,13 @@ void display(void) {
     // Set the view matrix. To start with this just moves the camera
     // backwards.  You'll need to add appropriate rotations.
 
-    view = Translate(0.0, 0.0, -viewDist);
+    vec4 fixatePoint = sceneObjs[currObject].loc;
+    // Translate world such that the current object is at the origin
+    view = Translate(-1 * fixatePoint[0], -1 * fixatePoint[1], -1 * fixatePoint[2]);
+    // Set camera to look at the origin.
+    view = LookAt(eye, vec4(0, 0, 0, 1), vec4(0, 1, 0, 0)) * view;
+    // Adjust the view distance.
+    adjustViewDistance();
 
     SceneObject lightObj1 = sceneObjs[1];
     vec4 lightPosition = view * lightObj1.loc;
