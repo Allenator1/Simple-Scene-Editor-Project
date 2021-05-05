@@ -244,6 +244,7 @@ static void adjustcamSideUp(vec2 su) {
     // Rotates the camera about the origin.
     eye = RotateY(su[0]) * eye;
     // Translates the camera vertically to change the elevation angle.
+    // The magnitude of translation depends on the view distance.
     eye = Translate(0, su[1] * viewDist * 0.05, 0) * eye;
 }
 
@@ -489,6 +490,18 @@ static void adjustBlueBrightness(vec2 bl_br) {
     sceneObjs[toolObj].brightness += bl_br[1];
 }
 
+static void adjustAmbientDiffuse(vec2 ad) {
+    SceneObject currObj = sceneObjs[toolObj];
+    sceneObjs[toolObj].ambient = max(min(currObj.ambient + ad[0], float(1)), float(0));
+    sceneObjs[toolObj].diffuse = max(min(currObj.diffuse + ad[1], float(1)), float(0));
+}
+
+static void adjustSpecularShine(vec2 ss) {
+    SceneObject currObj = sceneObjs[toolObj];
+    sceneObjs[toolObj].specular = max(min(currObj.specular + ss[0], float(1)), float(0));
+    sceneObjs[toolObj].shine = max(min(currObj.shine + ss[1], float(100)), float(0));
+}
+
 static void lightMenu(int id) {
     deactivateTool();
     if (id == 70) {
@@ -535,7 +548,12 @@ static void materialMenu(int id) {
         setToolCallbacks(adjustRedGreen, mat2(1, 0, 0, 1),
                          adjustBlueBrightness, mat2(1, 0, 0, 1));
     }
-        // You'll need to fill in the remaining menu items here.
+    // You'll need to fill in the remaining menu items here.
+    if (id == 20) {
+        toolObj = currObject;
+        setToolCallbacks(adjustAmbientDiffuse, mat2(2, 0, 0, 0.5),
+                         adjustSpecularShine, mat2(2, 0, 0, 20));    
+    }
     else {
         printf("Error in materialMenu\n");
     }
@@ -572,7 +590,7 @@ static void makeMenu() {
 
     int materialMenuId = glutCreateMenu(materialMenu);
     glutAddMenuEntry("R/G/B/All", 10);
-    glutAddMenuEntry("UNIMPLEMENTED: Ambient/Diffuse/Specular/Shine", 20);
+    glutAddMenuEntry("CURRENTLY_IMPLEMENTING: Ambient/Diffuse/Specular/Shine", 20);
 
     int texMenuId = createArrayMenu(numTextures, textureMenuEntries, texMenu);
     int groundMenuId = createArrayMenu(numTextures, textureMenuEntries, groundMenu);
