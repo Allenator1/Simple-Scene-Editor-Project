@@ -39,7 +39,8 @@ static float camRotUpAndOverDeg = 20; // rotates the camera up and over the cent
 mat4 projection; // Projection matrix - set in the reshape function
 mat4 view; // View matrix - set in the display function.
 
-vec4 eye = vec4(0, 0, viewDist, 1);   //Used for the LookAt() function
+vec4 eye = vec4(0, 0, viewDist, 1);         // Used for the LookAt() function
+GLfloat cameraVerticalTranslation = 0;      // Tracks the current vertical translation of eye.
 
 // These are used to set the window title
 char lab[] = "Project1";
@@ -189,6 +190,7 @@ void adjustViewDistance() {
     float currentDist = sqrt(pow(eye[0], 2) + pow(eye[1], 2) + pow(eye[2], 2));
     float scale = viewDist / currentDist;
     eye = vec4(eye[0] * scale, eye[1] * scale, eye[2] * scale, 1);
+    cameraVerticalTranslation *= scale;
 }
 
 void zoomIn() {
@@ -245,7 +247,13 @@ static void adjustcamSideUp(vec2 su) {
     eye = RotateY(su[0]) * eye;
     // Translates the camera vertically to change the elevation angle.
     // The magnitude of translation depends on the view distance.
-    eye = Translate(0, su[1] * viewDist * 0.05, 0) * eye;
+    GLfloat upper = 0.3 * viewDist * M_PI;
+    GLfloat lower = -0.3 * viewDist * M_PI;
+    GLfloat trans = su[1] * viewDist * 0.05;
+    if (cameraVerticalTranslation + trans < upper && cameraVerticalTranslation + trans > lower) {
+        cameraVerticalTranslation += trans;
+        eye = Translate(0, trans, 0) * eye;
+    }
 }
 
 static void adjustLocXZ(vec2 xz) {
