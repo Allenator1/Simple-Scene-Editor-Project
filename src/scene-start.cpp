@@ -194,11 +194,11 @@ void adjustViewDistance() {
 }
 
 void zoomIn() {
-    viewDist = max(double(0.1), (viewDist < 0.0 ? viewDist : viewDist * 0.8) - 0.05);
+    viewDist = max(0.1, (viewDist < 0.0 ? viewDist : viewDist * 0.8) - 0.05);
 }
 
 void zoomOut() {
-    viewDist = max(double(0.1), (viewDist < 0.0 ? viewDist : viewDist * 1.25) + 0.05);
+    viewDist = max(0.1, (viewDist < 0.0 ? viewDist : viewDist * 1.25) + 0.05);
 }
 
 static void mouseClickOrScroll(int button, int state, int x, int y) {
