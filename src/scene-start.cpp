@@ -670,10 +670,10 @@ void idle(void) {
 //----------------------------------------------------------------------------
 
 void reshape(int width, int height) {
-    windowWidth = width;
-    windowHeight = height;
 
     glViewport(0, 0, width, height);
+    windowWidth = width;
+    windowHeight = height;
 
     // You'll need to modify this so that the view is similar to that in the
     // sample solution.
@@ -684,10 +684,18 @@ void reshape(int width, int height) {
     //         the window.
 
     GLfloat nearDist = 0.02;
-    projection = Frustum(-nearDist * (float) width / (float) height,
-                         nearDist * (float) width / (float) height,
-                         -nearDist, nearDist,
-                         nearDist, 100.0);
+
+    if (width < height) {
+        projection = Frustum(-nearDist, nearDist,
+                            -nearDist * (float) height / (float) width, 
+                            nearDist * (float) height / (float) width,
+                            nearDist, 100.0);
+    }
+    else if (width > height) {
+        projection = Frustum(-nearDist * (float) width / (float) height,
+                            nearDist * (float) width / (float) height,
+                            -nearDist, nearDist, nearDist, 100.0);
+    }
 }
 
 //----------------------------------------------------------------------------
