@@ -40,7 +40,7 @@ mat4 projection; // Projection matrix - set in the reshape function
 mat4 view; // View matrix - set in the display function.
 
 vec4 eye = vec4(0, 0, viewDist, 1);         // Used for the LookAt() function
-GLfloat cameraVerticalTranslation = 0;      // Tracks the current vertical translation of eye.
+GLfloat eyeVertTrans = 0;      // Tracks the current vertical translation of eye.
 
 // These are used to set the window title
 char lab[] = "Project1";
@@ -190,15 +190,15 @@ void adjustViewDistance() {
     float currentDist = sqrt(pow(eye[0], 2) + pow(eye[1], 2) + pow(eye[2], 2));
     float scale = viewDist / currentDist;
     eye = vec4(eye[0] * scale, eye[1] * scale, eye[2] * scale, 1);
-    cameraVerticalTranslation *= scale;
+    eyeVertTrans *= scale;
 }
 
 void zoomIn() {
-    viewDist = (viewDist < 0.0 ? viewDist : viewDist * 0.8) - 0.05;
+    viewDist = max(double(0.1), (viewDist < 0.0 ? viewDist : viewDist * 0.8) - 0.05);
 }
 
 void zoomOut() {
-    viewDist = (viewDist < 0.0 ? viewDist : viewDist * 1.25) + 0.05;
+    viewDist = max(double(0.1), (viewDist < 0.0 ? viewDist : viewDist * 1.25) + 0.05);
 }
 
 static void mouseClickOrScroll(int button, int state, int x, int y) {
@@ -233,7 +233,7 @@ mat2 camRotZ() {
 
 static void adjustCamrotsideViewdist(vec2 cv) {
     camRotSidewaysDeg += cv[0];
-    viewDist += cv[1];
+    viewDist = max(float(0.1), viewDist + cv[1]);
 
     // Rotates the camera about the origin.
     eye = RotateY(cv[0]) * eye;
@@ -247,11 +247,11 @@ static void adjustcamSideUp(vec2 su) {
     eye = RotateY(su[0]) * eye;
     // Translates the camera vertically to change the elevation angle.
     // The magnitude of translation depends on the view distance.
-    GLfloat upper = 0.3 * viewDist * M_PI;
-    GLfloat lower = -0.3 * viewDist * M_PI;
+    GLfloat upper = 0.3 * viewDist * M_PI;      // Upper orbit path length limit
+    GLfloat lower = -0.3 * viewDist * M_PI;     // Lower orbit path length limit
     GLfloat trans = su[1] * viewDist * 0.05;
-    if (cameraVerticalTranslation + trans < upper && cameraVerticalTranslation + trans > lower) {
-        cameraVerticalTranslation += trans;
+    if (eyeVertTrans + trans < upper && eyeVertTrans + trans > lower) {
+        eyeVertTrans += trans;
         eye = Translate(0, trans, 0) * eye;
     }
 }
