@@ -28,27 +28,4 @@ void main()
 
     gl_Position = Projection * ModelView * vpos;
     texCoord = vTexCoord;
-
-    /* 
-    --- Compute the ambient, diffuse and specular terms in the vertex
-    shader ----- 
-
-    // Compute terms in the illumination equation
-    vec3 ambient = AmbientProduct * dist_attun;
-
-    float Kd = max( dot(L, N), 0.0 ) * dist_attun;
-    vec3  diffuse = Kd*DiffuseProduct;
-
-    float Ks = pow( max(dot(N, H), 0.0), Shininess ) * dist_attun;
-    vec3  specular = Ks * SpecularProduct;
-    
-    if (dot(L, N) < 0.0 ) {
-	specular = vec3(0.0, 0.0, 0.0);
-    } 
-
-    // globalAmbient is independent of distance from the light source
-    vec3 globalAmbient = vec3(0.1, 0.1, 0.1);
-    color.rgb = globalAmbient  + ambient + diffuse + specular;
-    color.a = 1.0; 
-    */
 }
