@@ -364,6 +364,12 @@ void init(void) {
     sceneObjs[1].texId = 0; // Plain texture
     sceneObjs[1].brightness = 0.2; // The light's brightness is 5 times this (below).
 
+    addObject(55); // Sphere for the second light
+    sceneObjs[2].loc = vec4(2.0, 0.0, 1.0, 1.0);
+    sceneObjs[2].scale = 0.2;
+    sceneObjs[2].texId = 0; // Plain texture
+    sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
+
     addObject(rand() % numMeshes); // A test mesh
 
     // We need to enable the depth test to discard fragments that
@@ -437,21 +443,32 @@ void display(void) {
     adjustViewDistance();
 
     SceneObject lightObj1 = sceneObjs[1];
-    vec4 lightPosition = view * lightObj1.loc;
+    SceneObject lightObj2 = sceneObjs[2];
+    vec4 lightPosition1 = view * lightObj1.loc;
+    vec4 lightPosition2 = view * lightObj2.loc;
 
-    glUniform4fv(glGetUniformLocation(shaderProgram, "LightPosition"),
-                 1, lightPosition);
+    glUniform4fv(glGetUniformLocation(shaderProgram, "LightPosition1"),
+                 1, lightPosition1);
+    glUniform4fv(glGetUniformLocation(shaderProgram, "LightPosition2"),
+                 1, lightPosition2);
     CheckError();
 
     for (int i = 0; i < nObjects; i++) {
         SceneObject so = sceneObjs[i];
 
-        vec3 rgb = so.rgb * lightObj1.rgb * so.brightness * lightObj1.brightness * 2.0;
-        vec3 light_rgb = lightObj1.rgb * lightObj1.brightness * 2.0;
-        glUniform3fv(glGetUniformLocation(shaderProgram, "AmbientProduct"), 1, so.ambient * rgb);
-        CheckError();
-        glUniform3fv(glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb);
-        glUniform3fv(glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * light_rgb);
+        vec3 rgb1 = so.rgb * so.brightness * lightObj1.rgb * lightObj1.brightness * 2.0;
+        vec3 rgb2 = so.rgb * so.brightness * lightObj2.rgb * lightObj2.brightness * 2.0;
+        vec3 light_rgb1 = lightObj1.rgb * lightObj1.brightness * 2.0;
+        vec3 light_rgb2 = lightObj2.rgb * lightObj2.brightness * 2.0;
+
+        glUniform3fv(glGetUniformLocation(shaderProgram, "AmbientProduct1"), 1, so.ambient * rgb1);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "DiffuseProduct1"), 1, so.diffuse * rgb1);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "SpecularProduct1"), 1, so.specular * light_rgb1);
+
+        glUniform3fv(glGetUniformLocation(shaderProgram, "AmbientProduct2"), 1, so.ambient * rgb2);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "DiffuseProduct2"), 1, so.diffuse * rgb2);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "SpecularProduct2"), 1, so.specular * light_rgb2);
+
         glUniform1f(glGetUniformLocation(shaderProgram, "Shininess"), so.shine);
         CheckError();
 
