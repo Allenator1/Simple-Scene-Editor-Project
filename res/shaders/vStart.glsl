@@ -4,9 +4,8 @@ attribute vec2 vTexCoord;
 
 varying vec2 texCoord;
 varying vec3 Lvec1;
-varying vec3 H1;
 varying vec3 E;
-varying vec3 norm;
+varying vec3 N;
 
 uniform mat4 ModelView;
 uniform mat4 Projection;
@@ -21,16 +20,11 @@ void main()
 
     // The vector to the light from the vertex    
     Lvec1 = LightPosition1.xyz - pos;
-    vec3 L1 = normalize(Lvec1);
-
-    // Unit direction vectors for Blinn-Phong shading calculation
 
     // Direction to the eye/camera 
     E = normalize( -pos );     
-    // Halfway vector        
-    H1 = normalize( L1 + E );    
     // Normal vector transformed to eye coordinates                             
-    norm = normalize( (ModelView*vec4(vNormal, 0.0)).xyz );
+    N = normalize( (ModelView*vec4(vNormal, 0.0)).xyz );
 
     gl_Position = Projection * ModelView * vpos;
     texCoord = vTexCoord;
