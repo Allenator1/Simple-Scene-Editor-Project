@@ -363,12 +363,14 @@ void init(void) {
     sceneObjs[1].scale = 0.1;
     sceneObjs[1].texId = 0; // Plain texture
     sceneObjs[1].brightness = 0.2; // The light's brightness is 5 times this (below).
+    sceneObjs[1].rgb = vec3(1.0, 1.0, 1.0);
 
     addObject(55); // Sphere for the second light
     sceneObjs[2].loc = vec4(2.0, 0.0, 1.0, 1.0);
     sceneObjs[2].scale = 0.2;
     sceneObjs[2].texId = 0; // Plain texture
     sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
+    sceneObjs[2].rgb = vec3(1.0, 1.0, 1.0);
 
     addObject(rand() % numMeshes); // A test mesh
 
@@ -534,8 +536,16 @@ static void lightMenu(int id) {
         toolObj = 1;
         setToolCallbacks(adjustLocXZ, camRotZ(),
                          adjustBrightnessY, mat2(1.0, 0.0, 0.0, 10.0));
+    } else if (id == 80) {
+        toolObj = 2;
+        setToolCallbacks(adjustLocXZ, camRotZ(),
+                         adjustBrightnessY, mat2(1.0, 0.0, 0.0, 10.0));
     } else if (id >= 71 && id <= 74) {
         toolObj = 1;
+        setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
+                         adjustBlueBrightness, mat2(1.0, 0, 0, 1.0));
+    } else if (id >= 81 && id <= 84) {
+        toolObj = 2;
         setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
                          adjustBlueBrightness, mat2(1.0, 0, 0, 1.0));
     } else {
@@ -574,7 +584,6 @@ static void materialMenu(int id) {
         setToolCallbacks(adjustRedGreen, mat2(1, 0, 0, 1),
                          adjustBlueBrightness, mat2(1, 0, 0, 1));
     }
-    // You'll need to fill in the remaining menu items here.
     if (id == 20) {
         toolObj = currObject;
         setToolCallbacks(adjustAmbientDiffuse, mat2(2, 0, 0, 0.5),
@@ -616,7 +625,7 @@ static void makeMenu() {
 
     int materialMenuId = glutCreateMenu(materialMenu);
     glutAddMenuEntry("R/G/B/All", 10);
-    glutAddMenuEntry("CURRENTLY_IMPLEMENTING: Ambient/Diffuse/Specular/Shine", 20);
+    glutAddMenuEntry("Ambient/Diffuse/Specular/Shine", 20);
 
     int texMenuId = createArrayMenu(numTextures, textureMenuEntries, texMenu);
     int groundMenuId = createArrayMenu(numTextures, textureMenuEntries, groundMenu);
