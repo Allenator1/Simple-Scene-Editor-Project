@@ -2,6 +2,10 @@ CITS3003 Project Report
 
 
 Task 1:
-This task was completed successfully: the camera orbits horizontally around the model (360 degrees) by dragging horizontally with the left mouse button or middle mouse button, and vertically around the model (in a hemisphere) by dragging vertically with the middle mouse button.
+This task was completed=: the camera orbits horizontally around the model (360 degrees) by dragging horizontally with the left mouse button or middle mouse button, and vertically around the model (in a hemisphere) by dragging vertically with the middle mouse button.
 
-This was achieved by using the LookAt() function. A global variable was defined called “eye” which defined the camera coordinates used in LookAt(). “eye” was transformed by the gluMotionFunc callback – using RotateX and RotateY to rotate horizontally about the object and Translate() to change the elevation angle. The world was translated such that the focused object lied on the origin to allow for easy rotation and the “at” vector in LookAt() was set to the origin.
+This was achieved by using the LookAt() function. A global variable was defined called “eye” which defined the camera coordinates used in LookAt(). “eye” was transformed by the gluMotionFunc callback – using RotateX and RotateY to rotate horizontally about the object and Translate() to change the elevation angle. The world was translated such that the focused object lied on the origin to allow for easy rotation.
+
+However, some considerations are:
+	-When viewing the object up close, the camera 'vibrates' while performing a vertical orbit.
+	-You can currently zoom in past the centre of the object - this is a bug that needs to be addressed.
