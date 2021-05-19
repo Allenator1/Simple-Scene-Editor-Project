@@ -39,6 +39,9 @@ static float camRotUpAndOverDeg = 20; // rotates the camera up and over the cent
 mat4 projection; // Projection matrix - set in the reshape function
 mat4 view; // View matrix - set in the display function.
 
+vec4 eye = vec4(0, 0, viewDist, 1);         // Used for the LookAt() function
+GLfloat eyeVertTrans = 0;      // Tracks the current vertical translation of eye.
+
 // These are used to set the window title
 char lab[] = "Project1";
 char *programName = NULL; // Set in main 
@@ -167,7 +170,7 @@ void loadMeshIfNotAlreadyLoaded(int meshNumber) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferId[0]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * mesh->mNumFaces * 3, elements.data(), GL_STATIC_DRAW);
 
-    // vPosition it actually 4D - the conversion sets the fourth dimension (i.e. w) to 1.0                 
+    // vPosition is actually 4D - the conversion sets the fourth dimension (i.e. w) to 1.0                 
     glVertexAttribPointer(vPosition, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vPosition);
 
@@ -183,12 +186,19 @@ void loadMeshIfNotAlreadyLoaded(int meshNumber) {
 
 //----------------------------------------------------------------------------
 
+void adjustViewDistance() {
+    float currentDist = sqrt(pow(eye[0], 2) + pow(eye[1], 2) + pow(eye[2], 2));
+    float scale = viewDist / currentDist;
+    eye = vec4(eye[0] * scale, eye[1] * scale, eye[2] * scale, 1);
+    eyeVertTrans *= scale;
+}
+
 void zoomIn() {
-    viewDist = (viewDist < 0.0 ? viewDist : viewDist * 0.8) - 0.05;
+    viewDist = max(0.1, (viewDist < 0.0 ? viewDist : viewDist * 0.8) - 0.05);
 }
 
 void zoomOut() {
-    viewDist = (viewDist < 0.0 ? viewDist : viewDist * 1.25) + 0.05;
+    viewDist = max(0.1, (viewDist < 0.0 ? viewDist : viewDist * 1.25) + 0.05);
 }
 
 static void mouseClickOrScroll(int button, int state, int x, int y) {
@@ -222,14 +232,28 @@ mat2 camRotZ() {
 //------callback functions for doRotate below and later-----------------------
 
 static void adjustCamrotsideViewdist(vec2 cv) {
-    cout << cv << endl;
     camRotSidewaysDeg += cv[0];
-    viewDist += cv[1];
+    viewDist = max(float(0.1), viewDist + cv[1]);
+
+    // Rotates the camera about the origin.
+    eye = RotateY(cv[0]) * eye;
 }
 
 static void adjustcamSideUp(vec2 su) {
     camRotSidewaysDeg += su[0];
     camRotUpAndOverDeg += su[1];
+
+    // Rotates the camera about the origin.
+    eye = RotateY(su[0]) * eye;
+    // Translates the camera vertically to change the elevation angle.
+    // The magnitude of translation depends on the view distance.
+    GLfloat upper = 0.3 * viewDist * M_PI;      // Upper orbit path length limit
+    GLfloat lower = -0.3 * viewDist * M_PI;     // Lower orbit path length limit
+    GLfloat trans = su[1] * viewDist * 0.05;
+    if (eyeVertTrans + trans < upper && eyeVertTrans + trans > lower) {
+        eyeVertTrans += trans;
+        eye = Translate(0, trans, 0) * eye;
+    }
 }
 
 static void adjustLocXZ(vec2 xz) {
@@ -339,6 +363,14 @@ void init(void) {
     sceneObjs[1].scale = 0.1;
     sceneObjs[1].texId = 0; // Plain texture
     sceneObjs[1].brightness = 0.2; // The light's brightness is 5 times this (below).
+    sceneObjs[1].rgb = vec3(1.0, 1.0, 1.0);
+
+    addObject(55); // Sphere for the second light
+    sceneObjs[2].loc = vec4(2.0, 0.0, 1.0, 1.0);
+    sceneObjs[2].scale = 0.2;
+    sceneObjs[2].texId = 0; // Plain texture
+    sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
+    sceneObjs[2].rgb = vec3(1.0, 1.0, 1.0);
 
     addObject(rand() % numMeshes); // A test mesh
 
@@ -372,7 +404,7 @@ void drawMesh(SceneObject sceneObj) {
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
     // in the sceneObj structure (see near the top of the program).
 
-    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale);
+    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateX(sceneObj.angles[0]) * RotateY(sceneObj.angles[1]) * RotateZ(sceneObj.angles[2]);
 
 
     // Set the model-view matrix for the shaders
@@ -404,23 +436,41 @@ void display(void) {
     // Set the view matrix. To start with this just moves the camera
     // backwards.  You'll need to add appropriate rotations.
 
-    view = Translate(0.0, 0.0, -viewDist);
+    vec4 fixatePoint = sceneObjs[currObject].loc;
+    // Translate world such that the current object is at the origin
+    view = Translate(-1 * fixatePoint[0], -1 * fixatePoint[1], -1 * fixatePoint[2]);
+    // Set camera to look at the origin.
+    view = LookAt(eye, vec4(0, 0, 0, 1), vec4(0, 1, 0, 0)) * view;
+    // Adjust the view distance.
+    adjustViewDistance();
 
     SceneObject lightObj1 = sceneObjs[1];
-    vec4 lightPosition = view * lightObj1.loc;
+    SceneObject lightObj2 = sceneObjs[2];
+    vec4 lightPosition1 = view * lightObj1.loc;
+    vec4 lightPosition2 = view * lightObj2.loc;
 
-    glUniform4fv(glGetUniformLocation(shaderProgram, "LightPosition"),
-                 1, lightPosition);
+    glUniform4fv(glGetUniformLocation(shaderProgram, "LightPosition1"),
+                 1, lightPosition1);
+    glUniform4fv(glGetUniformLocation(shaderProgram, "LightPosition2"),
+                 1, lightPosition2);
     CheckError();
 
     for (int i = 0; i < nObjects; i++) {
         SceneObject so = sceneObjs[i];
 
-        vec3 rgb = so.rgb * lightObj1.rgb * so.brightness * lightObj1.brightness * 2.0;
-        glUniform3fv(glGetUniformLocation(shaderProgram, "AmbientProduct"), 1, so.ambient * rgb);
-        CheckError();
-        glUniform3fv(glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb);
-        glUniform3fv(glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * rgb);
+        vec3 rgb1 = so.rgb * so.brightness * lightObj1.rgb * lightObj1.brightness * 2.0;
+        vec3 rgb2 = so.rgb * so.brightness * lightObj2.rgb * lightObj2.brightness * 2.0;
+        vec3 light_rgb1 = lightObj1.rgb * lightObj1.brightness * 2.0;
+        vec3 light_rgb2 = lightObj2.rgb * lightObj2.brightness * 2.0;
+
+        glUniform3fv(glGetUniformLocation(shaderProgram, "AmbientProduct1"), 1, so.ambient * rgb1);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "DiffuseProduct1"), 1, so.diffuse * rgb1);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "SpecularProduct1"), 1, so.specular * light_rgb1);
+
+        glUniform3fv(glGetUniformLocation(shaderProgram, "AmbientProduct2"), 1, so.ambient * rgb2);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "DiffuseProduct2"), 1, so.diffuse * rgb2);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "SpecularProduct2"), 1, so.specular * light_rgb2);
+
         glUniform1f(glGetUniformLocation(shaderProgram, "Shininess"), so.shine);
         CheckError();
 
@@ -438,6 +488,7 @@ static void objectMenu(int id) {
     deactivateTool();
     addObject(id);
 }
+
 
 static void texMenu(int id) {
     deactivateTool();
@@ -468,14 +519,34 @@ static void adjustBlueBrightness(vec2 bl_br) {
     sceneObjs[toolObj].brightness += bl_br[1];
 }
 
+static void adjustAmbientDiffuse(vec2 ad) {
+    SceneObject currObj = sceneObjs[toolObj];
+    sceneObjs[toolObj].ambient = max(min(currObj.ambient + ad[0], float(1)), float(0));
+    sceneObjs[toolObj].diffuse = max(min(currObj.diffuse + ad[1], float(1)), float(0));
+}
+
+static void adjustSpecularShine(vec2 ss) {
+    SceneObject currObj = sceneObjs[toolObj];
+    sceneObjs[toolObj].specular = max(min(currObj.specular + ss[0], float(1)), float(0));
+    sceneObjs[toolObj].shine = max(min(currObj.shine + ss[1], float(100)), float(0));
+}
+
 static void lightMenu(int id) {
     deactivateTool();
     if (id == 70) {
         toolObj = 1;
         setToolCallbacks(adjustLocXZ, camRotZ(),
                          adjustBrightnessY, mat2(1.0, 0.0, 0.0, 10.0));
+    } else if (id == 80) {
+        toolObj = 2;
+        setToolCallbacks(adjustLocXZ, camRotZ(),
+                         adjustBrightnessY, mat2(1.0, 0.0, 0.0, 10.0));
     } else if (id >= 71 && id <= 74) {
         toolObj = 1;
+        setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
+                         adjustBlueBrightness, mat2(1.0, 0, 0, 1.0));
+    } else if (id >= 81 && id <= 84) {
+        toolObj = 2;
         setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
                          adjustBlueBrightness, mat2(1.0, 0, 0, 1.0));
     } else {
@@ -514,11 +585,36 @@ static void materialMenu(int id) {
         setToolCallbacks(adjustRedGreen, mat2(1, 0, 0, 1),
                          adjustBlueBrightness, mat2(1, 0, 0, 1));
     }
-        // You'll need to fill in the remaining menu items here.
+    if (id == 20) {
+        toolObj = currObject;
+        setToolCallbacks(adjustAmbientDiffuse, mat2(2, 0, 0, 0.5),
+                         adjustSpecularShine, mat2(2, 0, 0, 20));    
+    }
     else {
         printf("Error in materialMenu\n");
     }
 }
+
+static void deleteMenu(int id) {
+    deactivateTool();
+    if (id == 101) {
+        //delete last added object
+        sceneObjs[currObject].meshId = 0;
+        sceneObjs[currObject].texId = 0;
+        toolObj = currObject = nObjects--;
+    }
+}
+
+static void duplicateMenu(int id) {
+    deactivateTool();
+    if (id == 111) {
+        //duplicate last added object
+        int texID = sceneObjs[currObject].texId;
+        addObject(sceneObjs[currObject].meshId);
+        sceneObjs[currObject].texId = texID;
+    }
+}
+
 
 static void adjustAngleYX(vec2 angle_yx) {
     sceneObjs[currObject].angles[1] += angle_yx[0];
@@ -526,7 +622,7 @@ static void adjustAngleYX(vec2 angle_yx) {
 }
 
 static void adjustAngleZTexscale(vec2 az_ts) {
-    sceneObjs[currObject].angles[2] += az_ts[0];
+    sceneObjs[currObject].angles[2] -= az_ts[0];
     sceneObjs[currObject].texScale += az_ts[1];
 }
 
@@ -541,7 +637,7 @@ static void mainmenu(int id) {
         doRotate();
     if (id == 55 && currObject >= 0) {
         setToolCallbacks(adjustAngleYX, mat2(400, 0, 0, -400),
-                         adjustAngleZTexscale, mat2(400, 0, 0, 15));
+                         adjustAngleZTexscale, mat2(-400, 0, 0, 15));
     }
     if (id == 99) exit(0);
 }
@@ -549,13 +645,21 @@ static void mainmenu(int id) {
 static void makeMenu() {
     int objectId = createArrayMenu(numMeshes, objectMenuEntries, objectMenu);
 
+    int deleteId = glutCreateMenu(deleteMenu);
+    glutAddMenuEntry("Delete Current Object", 101);
+
+    int duplicateId = glutCreateMenu(duplicateMenu);
+    glutAddMenuEntry("Duplicate Current Object", 111);
+    
+
+
     int materialMenuId = glutCreateMenu(materialMenu);
     glutAddMenuEntry("R/G/B/All", 10);
-    glutAddMenuEntry("UNIMPLEMENTED: Ambient/Diffuse/Specular/Shine", 20);
+    glutAddMenuEntry("Ambient/Diffuse/Specular/Shine", 20);
 
     int texMenuId = createArrayMenu(numTextures, textureMenuEntries, texMenu);
     int groundMenuId = createArrayMenu(numTextures, textureMenuEntries, groundMenu);
-
+     
     int lightMenuId = glutCreateMenu(lightMenu);
     glutAddMenuEntry("Move Light 1", 70);
     glutAddMenuEntry("R/G/B/All Light 1", 71);
@@ -565,6 +669,8 @@ static void makeMenu() {
     glutCreateMenu(mainmenu);
     glutAddMenuEntry("Rotate/Move Camera", 50);
     glutAddSubMenu("Add object", objectId);
+    glutAddSubMenu("Delete object", deleteId);
+    glutAddSubMenu("Duplicate object", duplicateId);
     glutAddMenuEntry("Position/Scale", 41);
     glutAddMenuEntry("Rotation/Texture Scale", 55);
     glutAddSubMenu("Material", materialMenuId);
@@ -623,10 +729,10 @@ void idle(void) {
 //----------------------------------------------------------------------------
 
 void reshape(int width, int height) {
-    windowWidth = width;
-    windowHeight = height;
 
     glViewport(0, 0, width, height);
+    windowWidth = width;
+    windowHeight = height;
 
     // You'll need to modify this so that the view is similar to that in the
     // sample solution.
@@ -636,11 +742,19 @@ void reshape(int width, int height) {
     //         that the same part of the scene is visible across the width of
     //         the window.
 
-    GLfloat nearDist = 0.2;
-    projection = Frustum(-nearDist * (float) width / (float) height,
-                         nearDist * (float) width / (float) height,
-                         -nearDist, nearDist,
-                         nearDist, 100.0);
+    GLfloat nearDist = 0.02;
+
+    if (width < height) {
+        projection = Frustum(-nearDist, nearDist,
+                            -nearDist * (float) height / (float) width, 
+                            nearDist * (float) height / (float) width,
+                            nearDist, 100.0);
+    }
+    else if (width > height) {
+        projection = Frustum(-nearDist * (float) width / (float) height,
+                            nearDist * (float) width / (float) height,
+                            -nearDist, nearDist, nearDist, 100.0);
+    }
 }
 
 //----------------------------------------------------------------------------
